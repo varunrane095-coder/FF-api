@@ -1,55 +1,50 @@
-const express = require("express");
+import express from "express";
+import fetch from "node-fetch";
+
 const app = express();
-
 const PORT = process.env.PORT || 3000;
+const HF_TOKEN = process.env.HF_TOKEN;
 
-// 🔥 CORS FIX (MOST IMPORTANT LINE)
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  next();
+// Root route
+app.get("/", (req, res) => {
+  res.send("AI API is running 🚀");
 });
 
-const FF_UID_REGEX = /^[0-9]{8,12}$/;
+// Image generator
+app.get("/generate", async (req, res) => {
+  const prompt = req.query.prompt;
 
-const mockPlayers = {
-  "123456789": { name: "ProGamer", level: 50 },
-  "987654321": { name: "FireKing", level: 62 },
-  "555666777": { name: "HeadshotX", level: 45 }
-};
-
-app.get("/api/freefire/player/:playerId", (req, res) => {
-  const playerId = req.params.playerId;
-
-  if (!FF_UID_REGEX.test(playerId)) {
-    return res.status(400).json({
-      playerId,
-      playerName: null,
-      playerLevel: null,
-      error: "Invalid Free Fire player ID format."
-    });
+  if (!prompt) {
+    return res.json({ error: "Prompt required" });
   }
 
-  const player = mockPlayers[playerId];
+  try {
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${HF_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ inputs: prompt })
+      }
+    );
 
-  if (!player) {
-    return res.status(404).json({
-      playerId,
-      playerName: null,
-      playerLevel: null,
-      error: "Player not found or invalid ID."
-    });
+    if (!response.ok) {
+      const text = await response.text();
+      return res.status(500).json({ error: text });
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.set("Content-Type", "image/png");
+    res.send(buffer);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  res.json({
-    playerId,
-    playerName: player.name,
-    playerLevel: player.level,
-    error: null
-  });
 });
 
 app.listen(PORT, () => {
-  console.log("Free Fire API running");
+  console.log("Server running on port " + PORT);
 });
