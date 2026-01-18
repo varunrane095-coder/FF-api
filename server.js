@@ -3,6 +3,14 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
+// 🔥 CORS FIX (MOST IMPORTANT LINE)
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
+
 const FF_UID_REGEX = /^[0-9]{8,12}$/;
 
 const mockPlayers = {
