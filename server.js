@@ -1,21 +1,22 @@
 import express from "express";
 import fetch from "node-fetch";
+import cors from "cors";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(cors());
+app.use(express.json());
+
 const HF_TOKEN = process.env.HF_TOKEN;
 
-// Root route
 app.get("/", (req, res) => {
   res.send("AI API is running 🚀");
 });
 
-// Image generator
 app.get("/generate", async (req, res) => {
   const prompt = req.query.prompt;
 
-  if (!prompt) {
-    return res.json({ error: "Prompt required" });
+  if (!prompt || prompt.length < 5) {
+    return res.status(400).json({ error: "Prompt too short" });
   }
 
   try {
@@ -25,9 +26,9 @@ app.get("/generate", async (req, res) => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${HF_TOKEN}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ inputs: prompt })
+        body: JSON.stringify({ inputs: prompt }),
       }
     );
 
@@ -36,15 +37,16 @@ app.get("/generate", async (req, res) => {
       return res.status(500).json({ error: text });
     }
 
-    const buffer = Buffer.from(await response.arrayBuffer());
-    res.set("Content-Type", "image/png");
-    res.send(buffer);
+    const imageBuffer = await response.arrayBuffer();
 
+    res.set("Content-Type", "image/png");
+    res.send(Buffer.from(imageBuffer));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
